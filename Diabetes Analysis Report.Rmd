@@ -1,0 +1,315 @@
+---
+title: "Diabetes Analysis Project"
+author: "Enock Bereka"
+date: "2025-01-25"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load necessary libraries
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(reshape2)
+library(ggfortify)
+library(skimr)
+library(kableExtra)
+library(patchwork)
+library(directlabels)
+library(MASS)
+library(hrbrthemes)
+library(viridis)
+library(RColorBrewer)
+library(ggcorrplot)
+```
+
+## Load and inspect the dataset
+```{r warning=FALSE, message=FALSE}
+diabetes <- read_csv("C:/Users/PC/OneDrive/Desktop/Data Science/Datasets/Datasets/diabetes.csv")
+glimpse(diabetes)
+anyNA(diabetes)
+duplicated(diabetes) %>% table()
+```
+
+## Data preparation
+## Assign ID to act as a unique identifier
+```{r}
+diabetes$id <- seq.int(nrow(diabetes))
+```
+
+## Convert response variable to binary
+```{r}
+diabetes$outcome <- ifelse(diabetes$Outcome==0, "Negative", "Positive")
+```
+
+## Variable categorisation.
+```{r}
+diabetes$pregnancy <- ifelse(diabetes$Pregnancies<=8, "Under 8", "Above 8")
+diabetes$Glucose_level <- ifelse(diabetes$Glucose>=70 & diabetes$Glucose<=100, "Glucose Normal", "Glucose Abnormal")
+diabetes$blood_pressure <- ifelse(diabetes$BloodPressure>=90 & diabetes$BloodPressure<=120, "Normal", "Abnormal")
+diabetes$bmi <- ifelse(diabetes$BMI<18.5, "Underweight",                    ifelse(diabetes$BMI>=18.5&diabetes$BMI<25, "Normal Weight", ifelse(diabetes$BMI>=25&diabetes$BMI<30, "Overweight", ifelse(diabetes$BMI>=30&diabetes$BMI<40, "Obese", "Severely Obese"))))
+diabetes$dpf <- ifelse(diabetes$DiabetesPedigreeFunction <= 0.70, "Normal", "Abnormal")
+diabetes$age <- ifelse(diabetes$Age>=21&diabetes$Age<=35, "Young",                     ifelse(diabetes$Age>=36&diabetes$Age<=55, "Middle Aged", "Old"))
+diabetes$Skinthickness <- ifelse(diabetes$SkinThickness<=23, "Normal", "Abnormal")
+diabetes$insulin <- ifelse(diabetes$Insulin<=25, "Insulin_Normal", "Insulin_Abnormal")
+```
+
+## Original Data table
+```{r}
+diabetes1 <- subset(diabetes, select=c(Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI,DiabetesPedigreeFunction,Age,Outcome))
+```
+
+## Univariate Analysis
+## Summary statistics for numeric columns
+```{r}
+diabetes2 <- subset(diabetes, select=c(Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI,DiabetesPedigreeFunction,Age))
+summary(diabetes2)
+```
+
+## Binary Variable Distribution 
+```{r}
+#1. Age
+p1 <-ggplot(diabetes, aes(x=age))+geom_bar(fill="green", color = "black")+labs(x="Age Group", title = "Age Distribution")+theme_minimal(base_size=10)
+#2. Pregnancies
+p2 <-ggplot(diabetes, aes(x=pregnancy))+geom_bar(fill="green", color = "black")+labs(x="Pregnancies", title = "Number of pregnancies distribution")+theme_minimal(base_size=10)
+#3. Glucose Levels
+p3 <-ggplot(diabetes, aes(x=Glucose_level))+geom_bar(fill="green", color = "black")+labs(x="Glucose Level", title = "Distribution of glucose levels")+theme_minimal(base_size=10)
+#4. Insulin
+p4 <-ggplot(diabetes, aes(x=insulin))+geom_bar(fill="green", color = "black")+labs(x="Insulin Levels", title = "Insulin Level distribution")+theme_minimal(base_size=10)
+#5. Blood Pressure
+p5 <-ggplot(diabetes, aes(x=blood_pressure))+geom_bar(fill="green", color = "black")+labs(x="Blood Pressure", title = "Blood Pressure distribution")+theme_minimal(base_size=10)
+#6. BMI
+p6 <-ggplot(diabetes, aes(x=bmi))+geom_bar(fill="green", color = "black")+labs(x="BMI Levels", title = "BMI Distribution")+theme_minimal(base_size=10)
+#7. Skin Thickness
+p7 <-ggplot(diabetes, aes(x=Skinthickness))+geom_bar(fill="green", color = "black")+labs(x="Skin Thickness", title = "Skin Thickness distribution")+theme_minimal(base_size=10)
+#8. Diabetes Pedigree Function
+p8 <-ggplot(diabetes, aes(x=dpf))+geom_bar(fill="green", color = "black")+labs(x="Diabetes Pedigree Function", title = "Diabetes Pedigree Function Distribution")+theme_minimal(base_size=10)
+#8. Diabetes Outcome
+p9 <-ggplot(diabetes, aes(x=outcome))+geom_bar(fill="green", color = "black")+labs(x="Outcome", title = "Prevalence of Diabetes")+theme_minimal(base_size=10)
+```
+
+## Demographic Distribution
+```{r}
+(p1+p2)+
+  plot_annotation(title="Demographic Distribution")
+```
+
+## Biochemical Factors Distribution
+```{r}
+(p3+p4)+
+  plot_annotation(title = "Biochemical Factors Distribution")
+```
+
+## Physical Factors Distribution.
+```{r}
+(p5+p6+p7)+
+  plot_annotation(title = "Physical Factors Distribution")
+```
+
+## Lab Test Distribution
+```{r}
+(p8+p9)+
+  plot_annotation(title = "Lab Test Distribution")
+```
+
+## Continuous Variables Disbribution
+#1. Age
+```{r}
+ggplot(diabetes1, aes(x=Age, fill = ..count..))+
+  scale_fill_discrete("Frequency", low = "yellow", high = "red")+
+  geom_histogram(binwidth=5, alpha=0.8)+
+  geom_vline(xintercept = 35, linetype="dashed")+
+  geom_vline(xintercept = 55, linetype="dashed")+
+  annotate("text", x=25, y=100, label="Young", size=2.5, color="red") +
+  annotate("text", x=47, y=100, label="Middle Age", size=2.5, color="red") +
+  annotate("text", x=70, y=100, label="Old", size=2.5, color="red") +
+  labs(title="Age Distribution") + theme_minimal(base_size = 8)
+```
+
+#2. Pregnancies
+```{r}
+ggplot(diabetes1, aes(x=Pregnancies, fill = ..count..))+ geom_histogram(binwidth=5, alpha=0.8)+
+scale_fill_discrete("Frequency", low = "yellow", high = "red")+
+  geom_vline(xintercept = 8, linetype="dashed")+
+  annotate("text", x=4, y=400, label="Low Risk", size=2.5, color="red") +
+  annotate("text", x=16, y=400, label="High Risk", size=2.5, color="red") +
+  labs(title="Pregnancies Distribution") + theme_minimal(base_size = 8)
+```
+
+#3. Glucose Levels
+```{r}
+ggplot(diabetes1, aes(x=Glucose, fill = ..count..))+ geom_histogram(binwidth=5,  alpha=0.8)+
+ scale_fill_discrete("Frequency", low = "yellow", high = "red")+
+  geom_vline(xintercept = 70, linetype="dashed")+
+  annotate("text", x=35, y=50, label="Normal", size=2.5, color="red") +
+  annotate("text", x=160, y=50, label="Abnormal", size=2.5, color="red") +
+  labs(title="Glucose Distribution") + theme_minimal(base_size = 8)
+```
+
+#4. Insulin
+```{r}
+ggplot(diabetes1, aes(x=Insulin, fill = ..count..))+ geom_histogram(binwidth=5, alpha=0.8)+
+  scale_fill_discrete("Frequency", low = "yellow", high = "red")+
+  geom_vline(xintercept = 25, linetype="dashed")+
+  annotate("text", x=15, y=50, label="Normal", size=2.5, color="red") +
+  annotate("text", x=100, y=50, label="Abnormal", size=2.5, color="red") +
+  labs(title="Insulin Distribution") + theme_minimal(base_size = 8)
+```
+
+#5. Blood Pressure
+```{r}
+ggplot(diabetes1, aes(x=BloodPressure, fill = ..count..))+ geom_histogram(binwidth=5, alpha=0.8)+
+  scale_fill_discrete("Frequency", low = "yellow", high = "red")+
+  geom_vline(xintercept = 90, linetype="dashed")+
+  geom_vline(xintercept = 120, linetype="dashed")+
+  annotate("text", x=100, y=50, label="Normal", size=2.5, color="red") +
+  annotate("text", x=50, y=50, label="Abnormal", size=2.5, color="red") +
+  labs(title= "Blood Pressure Distribution") + theme_minimal(base_size = 8)
+```
+
+#6. BMI
+```{r}
+ggplot(diabetes1, aes(x=BMI, fill = ..count..))+ geom_histogram(binwidth=5, alpha=0.8)+
+  scale_fill_discrete("Frequency", low = "yellow", high = "red")+
+  geom_vline(xintercept = 18.5, linetype="dashed")+
+  geom_vline(xintercept = 25, linetype="dashed")+
+  geom_vline(xintercept = 30, linetype="dashed")+
+  geom_vline(xintercept = 40, linetype="dashed")+
+  annotate("text", x=14, y=50, label="Underweight", size=2.5, color="red") +
+  annotate("text", x=22, y=60, label="Normalweight", size=2.5, color="red") +
+  annotate("text", x=27, y=70, label="Overweight", size=2.5, color="red") +
+  annotate("text", x=35, y=80, label="Obese", size=2.5, color="red") +
+  annotate("text", x=45, y=50, label="Severelyobese", size=2.5, color="red") +
+  labs(title= "BMI Distribution") + theme_minimal(base_size = 8)
+```
+
+#7. Skin Thickness
+```{r}
+ggplot(diabetes1, aes(x=SkinThickness, fill = ..count..))+ geom_histogram(binwidth=5, alpha=0.8)+
+  scale_fill_discrete("Frequency", low = "yellow", high = "red")+
+  geom_vline(xintercept = 23, linetype="dashed")+
+  annotate("text", x=15, y=50, label="Normal", size=2.5, color="red") +
+  annotate("text", x=30, y=50, label="Abnormal", size=2.5, color="red") +
+  labs(title= "Skin Thickness Distribution") + theme_minimal(base_size = 8)
+```
+
+## Bivariate Analysis
+## Relationship between continous variables
+## Correlation
+```{r}
+cr <- cor(diabetes2)
+ggcorrplot(cr,title = "Correlation Heatmap",lab_col = "black",
+           lab = TRUE, legend.title = "Pearson Correlation",
+           lab_size = 3, ggtheme = theme_classic(),
+           outline.color = "black",
+           colors = c("orange", "green", "blue"))
+```
+
+## T-test
+## Relationship between Age and Diabetes Outcome
+```{r}
+t.test(Age~outcome, data = diabetes)
+```
+
+## Relationship between Insulin and Diabetes Outcome
+```{r}
+t.test(Insulin~outcome, data = diabetes)
+```
+
+## Relationship between BMI and Diabetes Outcome
+```{r}
+t.test(BMI~outcome, data = diabetes)
+```
+
+## Relationship between Glucose and Diabetes Outcome
+```{r}
+t.test(Glucose~outcome, data = diabetes)
+```
+
+## Relationship between Age and BMI levels
+```{r}
+a <- aov(Age~bmi, data = diabetes)
+summary(a)
+```
+
+## Relationship between Glucose and BMI levels
+```{r}
+a <- aov(Glucose~bmi, data = diabetes)
+summary(a)
+```
+
+## Relationship between Insulin and Age groups
+```{r}
+a <- aov(Insulin~age, data = diabetes)
+summary(a)
+```
+
+## Multivariate analysis
+## Logistic Regression model
+```{r}
+model <- glm(Outcome~., data = diabetes1, family = binomial)
+```
+
+## Check Model assumptions
+```{r warning=FALSE, message=FALSE}
+library(performance)
+check_autocorrelation(model)
+check_collinearity(model)
+check_predictions(model) %>% plot()
+check_residuals(model)
+check_residuals(model) %>% plot()
+check_outliers(model)
+check_outliers(model) %>% plot()
+```
+
+## Get the summary of the model
+```{r}
+summary(model)
+```
+
+## Check model probabilities
+```{r warning=FALSE, message=FALSE}
+library(ggeffects)
+ggeffect(model)
+```
+
+## Visualize model predictions
+```{r warning=FALSE, message=FALSE}
+library(sjPlot)
+fancy_plot <- ggpredict(model) %>% plot() %>% 
+  sjPlot::plot_grid()
+```
+
+## Check if model predictions are statistically significant
+```{r warning=FALSE, message=FALSE}
+library(gtsummary)
+fancy_table <- tbl_regression(
+  model, exponentiate = TRUE,
+  add_pairwise_contrasts = TRUE,
+  contrasts_adjust = "bonferroni",
+  pairwise_reverse = FALSE,
+  pvalue_fun = ~style_pvalue(.x, digits = 3)) %>% 
+  add_significance_stars(hide_p = F, hide_se = T,
+                         hide_ci = F) %>% 
+  bold_p()
+fancy_table
+```
+
+## Checking variable importance
+```{r warning=FALSE, message=FALSE}
+library(vip)
+car::Anova(model)
+vip(model)
+```
+
+## How accurate is our model in making predictions
+## Produce ROC curve
+```{r warning=FALSE, message=FALSE}
+library(pROC)
+roc(Outcome~fitted.values(model), data = diabetes,
+    plot = TRUE, legacy.axes = TRUE, 
+    print.auc = TRUE, ci = TRUE)
+```
+
